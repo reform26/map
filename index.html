@@ -167,6 +167,30 @@
             white-space: nowrap; letter-spacing: -0.02em;
         }
 
+        /* 투표 마커 (29-1 전용) */
+        .marker-vote {
+            width: 50px; height: 50px; border-radius: 10px;
+            background: var(--marker-color, #f97316); position: absolute;
+            left: 50%; top: 50%; margin: -25px 0 0 -25px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+            box-shadow: 0 4px 14px rgba(249, 115, 22, 0.5); border: 3px solid var(--marker-border);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .marker-vote:hover { transform: scale(1.15); filter: brightness(85%); }
+        .marker-vote.dimmed {
+            opacity: 0.25 !important;
+            filter: grayscale(60%) scale(0.85);
+            box-shadow: none !important;
+        }
+        .marker-vote.active-highlight {
+            transform: scale(1.15);
+            filter: brightness(95%);
+            box-shadow: 0 0 22px var(--marker-color);
+            outline: 4px solid #ffedd5;
+        }
+        .marker-vote-icon { font-size: 20px; line-height: 1; }
+        .marker-vote-label { color: white; font-weight: 900; font-size: 9px; line-height: 1; letter-spacing: -0.03em; }
+
         /* 호버 시 밝기 필터 효과 적용 */
         .marker-pin:hover { transform: rotate(-45deg) scale(1.15); filter: brightness(85%); }
         
@@ -298,7 +322,10 @@
             }
         }
 
-        /* 다크모드 사이드바 동적 요소 스타일 */
+        /* 모바일에서 네비게이터 위치: 하단 통계 바 위로 */
+        @media (max-width: 767px) {
+            #scheduleNav { bottom: 110px !important; }
+        }
         html.dark #sidebarContent .border {
             border-color: var(--border-item) !important;
             background: var(--bg-card) !important;
@@ -422,6 +449,12 @@
                 </div>
             </div>
 
+            <!-- 일정 네비게이터 토글 버튼 -->
+            <button id="navToggleBtn" onclick="toggleScheduleNav()" class="bg-slate-100 hover:bg-orange-100 hover:text-orange-600 text-slate-600 font-bold px-2.5 py-2 md:px-3.5 md:py-2.5 rounded-lg text-xs md:text-sm transition-all flex items-center gap-1 shadow-sm" title="일정 순서 탐색">
+                <svg class="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>
+                <span class="hidden sm:inline">일정 탐색</span>
+            </button>
+
             <!-- 주의사항 보기 버튼 -->
             <button onclick="toggleNoticeModal(true)" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-2.5 py-2 md:px-3.5 md:py-2.5 rounded-lg text-xs md:text-sm transition-all flex items-center gap-1 shadow-sm" title="사이트 안내 및 주의사항">
                 <svg class="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
@@ -529,7 +562,40 @@
         </svg>
     </button>
 
-    <!-- 지도 컨테이너 -->
+    <!-- 일정 순서 네비게이터 (지도 하단 중앙 고정) -->
+    <div id="scheduleNav" class="fixed bottom-5 left-1/2 z-[1000] hidden" style="transform: translateX(-50%);">
+        <div class="flex items-center gap-2 px-3 py-2 rounded-2xl shadow-xl border-2 border-orange-400"
+             style="background: var(--bg-mobile-bar); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);">
+            <!-- 이전 버튼 -->
+            <button id="navPrev" onclick="navigateSchedule(-1)"
+                class="w-8 h-8 flex items-center justify-center rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-90 text-white transition-all shadow-sm flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <!-- 현재 일정 정보 -->
+            <div class="text-center min-w-0" style="max-width: 200px;">
+                <div id="navLabel" class="text-[10px] font-extrabold text-orange-500 tracking-wider"></div>
+                <div id="navPlace" class="text-xs font-black truncate" style="color: var(--text-primary);"></div>
+                <div id="navEvent" class="text-[10px] truncate" style="color: var(--text-muted);"></div>
+            </div>
+            <!-- 다음 버튼 -->
+            <button id="navNext" onclick="navigateSchedule(1)"
+                class="w-8 h-8 flex items-center justify-center rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-90 text-white transition-all shadow-sm flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </div>
+        <!-- 진행 인디케이터 -->
+        <div class="text-center mt-1">
+            <span id="navProgress" class="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                  style="background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-main);"></span>
+        </div>
+    </div>
+
+    <!-- 네비게이터 토글 버튼 (헤더 영역) -->
+
     <main id="map"></main>
 
     <script>
@@ -906,7 +972,113 @@
                 popupTag: "28일 일정 4번째",
                 place: "남성사계시장 앞",
                 event: "19:00 | 서울시 동작구 집중유세",
-                address: "서울 동작구 총신대입구(이수)역 14번 출구"
+                address: "서울 동작구 총신대입구(이수)역 14번 출구",
+                companion: "박일하, 김효숙, 민경희, 이민수, 김영림 후보, 이주영 의원",
+                liveUrl: "https://www.youtube.com/watch?v=xcFcA3FqhPM&t=13s"
+            },
+            // 5월 29일 일정
+            {
+                lat: 37.180579,
+                lng: 127.138225,
+                label: "29-1",
+                dateGroup: "5월 29일 (금)",
+                popupTag: "29일 일정 1번째",
+                place: "동탄9동 행정복지센터",
+                event: "09:00 | 사전투표 1일차 | 이준석 대표 투표",
+                address: "경기 화성시 동탄구 동탄신리천로9길 76",
+                companion: "전성균, 이우주, 양시훈 후보",
+                liveUrl: "https://www.reformparty.kr/promotion/561"
+            },
+            {
+                lat: 37.483737,
+                lng: 126.929610,
+                label: "29-2",
+                dateGroup: "5월 29일 (금)",
+                popupTag: "29일 일정 2번째",
+                place: "신림역 3번출구",
+                event: "11:40 | 이혜숙 관악구청장 후보 유세",
+                address: "서울 관악구 신림역 3번출구",
+                companion: "이혜숙, 김정철, 구가환, 구자민, 원동철, 민영진, 박범근 후보",
+                liveUrl: "https://www.youtube.com/watch?v=XwdIve_fuNg"
+            },
+            {
+                lat: 37.542938,
+                lng: 127.203810,
+                label: "29-3",
+                dateGroup: "5월 29일 (금)",
+                popupTag: "29일 일정 3번째",
+                place: "하남 덕풍시장",
+                event: "14:30 | 김성열 후보 지원유세",
+                address: "경기 하남시 덕풍시장",
+                companion: "김성열 후보, 조응천 후보, 천하람, 이주영 의원",
+                liveUrl: "https://www.youtube.com/watch?v=W_TZbO_iLvA"
+            },
+            // 5월 30일 일정
+            {
+                lat: 37.199009,
+                lng: 127.116492,
+                label: "30-1",
+                dateGroup: "5월 30일 (토)",
+                popupTag: "30일 일정 1번째",
+                place: "동탄4동 사전투표소 인근",
+                event: "09:00 | 동탄 4동 사전투표 독려 인사",
+                address: "경기 화성시 동탄구 동탄4동 일대",
+                companion: "이준석, 전성균, 김기현 후보"
+            },
+            {
+                lat: 37.170675,
+                lng: 127.114033,
+                label: "30-2",
+                dateGroup: "5월 30일 (토)",
+                popupTag: "30일 일정 2번째",
+                place: "동탄7동 사전투표소 인근",
+                event: "10:00 | 동탄 7동 사전투표 독려 인사",
+                address: "경기 화성시 동탄구 동탄7동 일대",
+                companion: "이준석, 전성균, 양시훈, 이우주 후보"
+            },
+            {
+                lat: 37.212272,
+                lng: 127.103509,
+                label: "30-3",
+                dateGroup: "5월 30일 (토)",
+                popupTag: "30일 일정 3번째",
+                place: "동탄5동 사전투표소 인근",
+                event: "13:00 | 동탄 5동 사전투표 독려 인사",
+                address: "경기 화성시 동탄구 동탄5동 일대",
+                companion: "이준석, 전성균 후보"
+            },
+            {
+                lat: 37.160737,
+                lng: 127.105142,
+                label: "30-4",
+                dateGroup: "5월 30일 (토)",
+                popupTag: "30일 일정 4번째",
+                place: "광역버스정류장",
+                event: "14:00 | 광역버스정류장 인사",
+                address: "경기 화성시 동탄구 광역버스정류장 일대",
+                companion: "이준석, 전성균 후보"
+            },
+            {
+                lat: 37.166681,
+                lng: 127.100444,
+                label: "30-5",
+                dateGroup: "5월 30일 (토)",
+                popupTag: "30일 일정 5번째",
+                place: "동탄호수공원",
+                event: "16:30 | 동탄호수공원 평화온담 축제 인사",
+                address: "경기 화성시 동탄구 동탄호수공원 일대",
+                companion: "이준석, 전성균, 양시훈, 이우주 후보"
+            },
+            {
+                lat: 37.184564,
+                lng: 127.121256,
+                label: "30-6",
+                dateGroup: "5월 30일 (토)",
+                popupTag: "30일 일정 6번째",
+                place: "동탄 힐스테이트 야시장",
+                event: "18:30 | 동탄 힐스테이트 야시장 인사",
+                address: "경기 화성시 동탄구 힐스테이트 야시장 일대",
+                companion: "이준석, 전성균 후보"
             }
         ];
 
@@ -922,7 +1094,42 @@
         let activePolyline; 
         let markers = [];
         let activeDateGroup = null; 
-        let dateColors = {}; 
+        let dateColors = {};
+        let navIndex = 0;
+        let navVisible = false;
+
+        /* ============================================================
+           일정 순서 네비게이터
+        ============================================================ */
+        function toggleScheduleNav() {
+            navVisible = !navVisible;
+            const nav = document.getElementById('scheduleNav');
+            const btn = document.getElementById('navToggleBtn');
+            if (navVisible) {
+                nav.classList.remove('hidden');
+                btn.classList.add('bg-orange-100', 'text-orange-600');
+                btn.classList.remove('bg-slate-100', 'text-slate-600');
+                updateNavDisplay();
+            } else {
+                nav.classList.add('hidden');
+                btn.classList.remove('bg-orange-100', 'text-orange-600');
+                btn.classList.add('bg-slate-100', 'text-slate-600');
+            }
+        }
+
+        function navigateSchedule(dir) {
+            navIndex = (navIndex + dir + ROUTE_DATA.length) % ROUTE_DATA.length;
+            updateNavDisplay();
+            focusOnMarker(navIndex);
+        }
+
+        function updateNavDisplay() {
+            const data = ROUTE_DATA[navIndex];
+            document.getElementById('navLabel').textContent = data.dateGroup + ' · ' + data.label;
+            document.getElementById('navPlace').textContent = data.place;
+            document.getElementById('navEvent').textContent = data.event;
+            document.getElementById('navProgress').textContent = (navIndex + 1) + ' / ' + ROUTE_DATA.length;
+        }
 
         window.onload = () => {
             initColorPalette();
@@ -1011,7 +1218,9 @@
                 const marker = L.marker(pos, {
                     icon: L.divIcon({
                         className: 'custom-div-icon',
-                        html: `<div class="marker-pin" style="--marker-color: ${color}"><span class="marker-label">${data.label}</span></div>`,
+                        html: data.voteMarker
+                            ? `<div class="marker-vote" style="--marker-color: ${color}"><span class="marker-vote-icon">🗳️</span><span class="marker-vote-label">${data.label}</span></div>`
+                            : `<div class="marker-pin" style="--marker-color: ${color}"><span class="marker-label">${data.label}</span></div>`,
                         iconSize: [50, 50],
                         iconAnchor: [25, 50]
                     })
@@ -1031,6 +1240,15 @@
                     <a href="${data.liveUrl}" target="_blank" rel="noopener noreferrer" style="color: #ffffff !important;" class="mt-3.5 flex items-center justify-center gap-1.5 w-full bg-gray-900 hover:bg-black active:scale-[0.97] text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
                         <img src="https://mblogthumb-phinf.pstatic.net/MjAxODA4MzBfNzEg/MDAxNTM1NjM2NjgzMDcw.YmdWO1A2jveSBfa5Txg1bgU-j4N8edBZOqIWzic1epYg.IgaDfWKsDaBxMpWbqyEc2uguak2kBN2HQ52G_H76wFMg.PNG.707atom/ribbon-148762_1280.png?type=w800" style="width:14px;height:14px;object-fit:contain;filter:brightness(0) invert(1);" alt="근조">
                         <span style="color: #ffffff !important;">분향소 참배 사진 보기</span>
+                    </a>
+                ` : data.label === '29-1' ? `
+                    <a href="${data.liveUrl}" target="_blank" rel="noopener noreferrer" style="color: #ffffff !important;" class="mt-3.5 flex items-center justify-center gap-1.5 w-full bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
+                        <svg style="width:15px;height:15px;flex-shrink:0;" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="50" cy="50" r="44" stroke="white" stroke-width="8" fill="none"/>
+                            <line x1="50" y1="6" x2="50" y2="94" stroke="white" stroke-width="8"/>
+                            <line x1="50" y1="50" x2="89" y2="78" stroke="white" stroke-width="8"/>
+                        </svg>
+                        <span style="color: #ffffff !important;">투표현장 보기</span>
                     </a>
                 ` : `
                     <a href="${data.liveUrl}" target="_blank" rel="noopener noreferrer" style="color: #ffffff !important;" class="mt-3.5 flex items-center justify-center gap-1.5 w-full bg-red-600 hover:bg-red-700 active:scale-[0.97] text-white text-xs font-bold py-2 rounded-lg transition-all shadow-sm">
@@ -1176,7 +1394,7 @@
                 const element = marker.getElement();
                 if (!element) return;
 
-                const pin = element.querySelector('.marker-pin');
+                const pin = element.querySelector('.marker-pin, .marker-vote');
                 if (!pin) return;
 
                 if (data.dateGroup === dateGroup) {
@@ -1232,7 +1450,7 @@
                 if (!marker) return;
                 const element = marker.getElement();
                 if (!element) return;
-                const pin = element.querySelector('.marker-pin');
+                const pin = element.querySelector('.marker-pin, .marker-vote');
                 if (pin) pin.classList.remove('dimmed', 'active-highlight');
             });
 
